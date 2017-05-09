@@ -14,10 +14,7 @@ import android.os.Bundle;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.View;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 
@@ -44,7 +41,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private Sensor mAccelometer;
 
 
-    private EditText mInputEditText;
     private ArrayAdapter<String> mConversationArrayAdapter;
 
     @Override
@@ -52,24 +48,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Button sendButton = (Button)findViewById(R.id.send_button);
-        sendButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                //센서와 전송 부분
-                String sendMessage = mInputEditText.getText().toString();
-                if ( sendMessage.length() > 0 ) {
-                    sendMessage(sendMessage);
-                }
-            }
-        });
-
         //센서
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         mAccelometer = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
 
+        //연결 상태를 보여주는 뷰
         mConnectionStatus = (TextView)findViewById(R.id.connection_status_textview);
-        mInputEditText = (EditText)findViewById(R.id.input_string_edittext);
         ListView mMessageListview = (ListView) findViewById(R.id.message_listview);
 
         mConversationArrayAdapter = new ArrayAdapter<>( this, android.R.layout.simple_list_item_1 );
@@ -123,6 +107,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     + "           [Y]:" + String.format("%.4f", y)
                     + "           [Z]:" + String.format("%.4f", z)
             );
+
+            String speed = Double.toString(y);
+            sendMessage(speed);
         }
     }
 
@@ -151,7 +138,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             } catch (IOException e) {
                 Log.e( TAG, "socket create failed " + e.getMessage());
             }
-            mConnectionStatus.setText("connecting...");
+            mConnectionStatus.setText("연결중......");
         }
 
         @Override
@@ -214,8 +201,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 Log.e(TAG, "socket not created", e );
             }
 
-            Log.d( TAG, "connected to "+mConnectedDeviceName);
-            mConnectionStatus.setText( "connected to "+mConnectedDeviceName);
+            Log.d( TAG, mConnectedDeviceName + "에 연결하였습니다");
+            mConnectionStatus.setText(mConnectedDeviceName + "에 연결하였습니다");
         }
 
 
@@ -312,16 +299,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
 
         void write(String msg){
-
             msg += "\n";
-
             try {
                 mOutputStream.write(msg.getBytes());
                 mOutputStream.flush();
             } catch (IOException e) {
                 Log.e(TAG, "Exception during send", e );
             }
-            mInputEditText.setText(" ");
         }
     }
 
@@ -400,7 +384,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         if ( mConnectedTask != null ) {
             mConnectedTask.write(msg);
             Log.d(TAG, "send message: " + msg);
-            mConversationArrayAdapter.insert("Me:  " + msg, 0);
+            //mConversationArrayAdapter.insert("Me:  " + msg, 0);
         }
     }
 

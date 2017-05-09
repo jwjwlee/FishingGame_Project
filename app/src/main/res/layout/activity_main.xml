@@ -15,7 +15,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="connection state : "/>
+            android:text="연결 상태 : "/>
 
         <TextView
             android:id="@+id/connection_status_textview"
@@ -31,19 +31,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <EditText
-            android:id="@+id/input_string_edittext"
-            android:hint="input text here"
-            android:layout_weight="0.8"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"/>
-
-        <Button
-            android:id="@+id/send_button"
-            android:layout_weight="0.2"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:text="Send" />
     </LinearLayout>
 
     <ListView
