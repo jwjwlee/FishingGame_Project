@@ -5,6 +5,10 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AlertDialog;
@@ -23,15 +27,22 @@ import java.io.OutputStream;
 import java.util.Set;
 import java.util.UUID;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements SensorEventListener {
 
     private TextView mConnectionStatus;
+
+    //블루투스
     private final int REQUEST_BLUETOOTH_ENABLE = 100;
     private static final String TAG = "BluetoothClient";
     private String mConnectedDeviceName = null;
     static BluetoothAdapter mBluetoothAdapter;
     static boolean isConnectionError = false;
     ConnectedTask mConnectedTask = null;
+
+    //센서
+    private SensorManager mSensorManager;
+    private Sensor mAccelometer;
+
 
     private EditText mInputEditText;
     private ArrayAdapter<String> mConversationArrayAdapter;
@@ -53,13 +64,15 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        //센서
+        mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        mAccelometer = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
 
         mConnectionStatus = (TextView)findViewById(R.id.connection_status_textview);
         mInputEditText = (EditText)findViewById(R.id.input_string_edittext);
         ListView mMessageListview = (ListView) findViewById(R.id.message_listview);
 
-        mConversationArrayAdapter = new ArrayAdapter<>( this,
-                android.R.layout.simple_list_item_1 );
+        mConversationArrayAdapter = new ArrayAdapter<>( this, android.R.layout.simple_list_item_1 );
         mMessageListview.setAdapter(mConversationArrayAdapter);
 
 
@@ -83,9 +96,39 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+        mSensorManager.registerListener(this, mAccelometer, 9000000);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        mSensorManager.unregisterListener(this);
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
         if ( mConnectedTask != null ) mConnectedTask.cancel(true);
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        if(event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
+            double x = event.values[0];
+            double y = event.values[1];
+            double z = event.values[2];
+            Log.e("LOG", "ACCELOMETER           [X]:" + String.format("%.4f", x)
+                    + "           [Y]:" + String.format("%.4f", y)
+                    + "           [Z]:" + String.format("%.4f", z)
+            );
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+
     }
 
     //연결
@@ -336,7 +379,6 @@ public class MainActivity extends AppCompatActivity {
         builder.create().show();
     }
 
-
     //끝내는 다이얼로그
     public void showQuitDialog(String message)
     {
@@ -353,7 +395,6 @@ public class MainActivity extends AppCompatActivity {
         });
         builder.create().show();
     }
-
 
     void sendMessage(String msg){
         if ( mConnectedTask != null ) {
