@@ -3,6 +3,7 @@ package com.jungwonlee.fishinggameproject;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.hardware.Sensor;
@@ -11,6 +12,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Vibrator;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -39,6 +41,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     //센서
     private SensorManager mSensorManager;
     private Sensor mAccelometer;
+    private Vibrator vibe;
 
 
     private ArrayAdapter<String> mConversationArrayAdapter;
@@ -48,18 +51,20 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        //센서
+        //센서 및 진동
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         mAccelometer = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+        vibe = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+
 
         //연결 상태를 보여주는 뷰
         mConnectionStatus = (TextView)findViewById(R.id.connection_status_textview);
+
+        //List를 보여줌
         ListView mMessageListview = (ListView) findViewById(R.id.message_listview);
 
         mConversationArrayAdapter = new ArrayAdapter<>( this, android.R.layout.simple_list_item_1 );
         mMessageListview.setAdapter(mConversationArrayAdapter);
-
-
 
         Log.d(TAG, "Initalizing Bluetooth adapter...");
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();  //블루투스 사용 가능한지 검사
@@ -82,7 +87,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Override
     public void onResume() {
         super.onResume();
-        mSensorManager.registerListener(this, mAccelometer, 9000000);
+        mSensorManager.registerListener(this, mAccelometer, 5000000);
     }
 
     @Override
@@ -99,17 +104,37 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        if(event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
-            double x = event.values[0];
-            double y = event.values[1];
-            double z = event.values[2];
-            Log.e("LOG", "ACCELOMETER           [X]:" + String.format("%.4f", x)
-                    + "           [Y]:" + String.format("%.4f", y)
-                    + "           [Z]:" + String.format("%.4f", z)
-            );
 
-            String speed = Double.toString(y);
-            sendMessage(speed);
+
+        //0초 시작, 500ms동안, 500ms쉬고
+        long patternMid[] = {0, 500, 300, 500};
+        long patternStrong[] = {0, 500, 300, 500, 300, 500};
+
+        boolean flag = false;
+
+        if(event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
+            //double x = event.values[0];
+            double y = event.values[1];
+            //double z = event.values[2];
+
+            Log.e("LOG", "[Y]:" + String.format("%.4f",y));
+
+            String speed = Double.toString(y);  //y축값의 스피드 측정
+            if(y < -0.6) {
+                sendMessage(speed);             //컴퓨터로 속도 값 전송
+
+                //스피드에 따른 진동
+                if(y < -0.6 && y > -1.0) {
+                    vibe.vibrate(350);
+                }
+                else if(y < -1.0 && y > -2.0) {
+                    vibe.vibrate(patternMid, -1);
+                }
+                else {
+                    vibe.vibrate(patternStrong, -1);
+                }
+            }
+
         }
     }
 
@@ -205,7 +230,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             mConnectionStatus.setText(mConnectedDeviceName + "에 연결하였습니다");
         }
 
-
         @Override
         protected Boolean doInBackground(Void... params) {
 
@@ -259,7 +283,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         @Override
         protected void onProgressUpdate(String... recvMessage) {
-
             mConversationArrayAdapter.insert(mConnectedDeviceName + ": " + recvMessage[0], 0);
         }
 
@@ -268,8 +291,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             super.onPostExecute(isSucess);
 
             if ( !isSucess ) {
-
-
                 closeSocket();
                 Log.d(TAG, "Device connection was lost");
                 isConnectionError = true;
@@ -280,19 +301,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         @Override
         protected void onCancelled(Boolean aBoolean) {
             super.onCancelled(aBoolean);
-
             closeSocket();
         }
 
         void closeSocket(){
-
             try {
-
                 mBluetoothSocket.close();
                 Log.d(TAG, "close socket()");
 
             } catch (IOException e2) {
-
                 Log.e(TAG, "unable to close() " +
                         " socket during connection failure", e2);
             }
